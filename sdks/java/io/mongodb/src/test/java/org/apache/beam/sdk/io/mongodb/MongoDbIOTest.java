@@ -194,7 +194,7 @@ public class MongoDbIOTest {
             .withCollection(COLLECTION_NAME)
             .withQueryFn(AggregationQuery.create().withMongoDbPipeline(aggregates));
 
-    List<Document> buckets = MongoDbIO.BoundedMongoDbSource.buildAutoBuckets(database, spec);
+    List<Document> buckets = MongoDbIO.BoundedMongoDbSource.buildAutoBuckets(database, spec, new ArrayList<>());
     assertEquals(10, buckets.size());
   }
 

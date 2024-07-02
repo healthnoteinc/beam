@@ -486,7 +486,7 @@ public class MongoDbIO {
 
         if (spec.queryFn().getClass() == AutoValue_FindQuery.class) {
           if (spec.bucketAuto()) {
-            splitKeys = buildAutoBuckets(mongoDatabase, spec);
+            splitKeys = buildAutoBuckets(mongoDatabase, spec, new ArrayList<>());
           } else {
             if (spec.numSplits() <= 0) {
               LOG.debug("Split keys disabled, using a unique source");
@@ -544,7 +544,8 @@ public class MongoDbIO {
               .anyMatch(s -> s.keySet().contains("$limit"))) {
             return Collections.singletonList(this);
           }
-          splitKeys = buildAutoBuckets(mongoDatabase, spec);
+
+		  splitKeys = buildAutoBuckets(mongoDatabase, spec, aggregationQuery.mongoDbPipeline().stream().filter(stage -> stage.keySet().contains("$match")).collect(Collectors.toList()));
 
           for (BsonDocument shardFilter : splitKeysToMatch(splitKeys)) {
             AggregationQuery queryWithBucket =
@@ -682,7 +683,7 @@ public class MongoDbIO {
     }
 
     @VisibleForTesting
-    static List<Document> buildAutoBuckets(MongoDatabase mongoDatabase, Read spec) {
+    static List<Document> buildAutoBuckets(MongoDatabase mongoDatabase, Read spec, List<BsonDocument> filters) {
       String collection = Preconditions.checkStateNotNull(spec.collection());
       List<Document> splitKeys = new ArrayList<>();
       MongoCollection<Document> mongoCollection = mongoDatabase.getCollection(collection);
@@ -692,6 +693,7 @@ public class MongoDbIO {
       bucketAutoConfig.put("buckets", new BsonInt32(spec.numSplits() > 0 ? spec.numSplits() : 10));
       BsonDocument bucketAuto = new BsonDocument("$bucketAuto", bucketAutoConfig);
       List<BsonDocument> aggregates = new ArrayList<>();
+	  aggregates.addAll(filters);
       aggregates.add(bucketAuto);
       AggregateIterable<Document> buckets = mongoCollection.aggregate(aggregates);
 
